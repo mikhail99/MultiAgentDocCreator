@@ -1,0 +1,17 @@
+# Test environment for Ollama backend testing
+# Copy this to .env.test and adjust as needed
+
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=qwen3:4b
+OLLAMA_BASE_URL=http://localhost:11434
+
+# Conservative settings for testing
+MAX_LLM_CALLS=3
+TEMPERATURE=0.7
+TOP_P=0.9
+MAX_TOKENS=2048
+
+# Tool settings
+PYTHON_EXECUTION_TIMEOUT=30
+SEARCH_MAX_RESULTS=5
+VISIT_TIMEOUT=10

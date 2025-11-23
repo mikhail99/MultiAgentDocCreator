@@ -1,0 +1,30 @@
+# Core LangGraph and LangChain
+langgraph>=0.1.0
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langchain-ollama>=0.1.0
+langchain-core>=0.1.0
+
+# Web framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# Research tools
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+googlesearch-python>=1.2.3
+scholarly>=1.7.11
+
+# Data processing
+pandas>=2.1.0
+numpy>=1.24.0
+
+# Utilities
+python-dotenv>=1.0.0
+asyncio-mqtt>=0.16.0
+
+# Development
+pytest>=7.4.0
+black>=23.0.0
+isort>=5.12.0

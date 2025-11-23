@@ -11,9 +11,10 @@ import { Separator } from '../ui/separator';
 
 const AVAILABLE_TOOLS = [
     { id: 'web_search', name: 'Web Search', icon: Search, description: 'Search the internet for information' },
-    { id: 'database_query', name: 'Database Query', icon: Database, description: 'Query internal databases' },
-    { id: 'code_analysis', name: 'Code Analysis', icon: Code, description: 'Analyze and generate code' },
-    { id: 'data_processing', name: 'Data Processing', icon: Zap, description: 'Process and transform data' }
+    { id: 'web_visit', name: 'Web Visit', icon: Search, description: 'Visit and extract content from web pages' },
+    { id: 'scholar_search', name: 'Scholar Search', icon: Database, description: 'Search academic publications' },
+    { id: 'python_interpreter', name: 'Python Interpreter', icon: Code, description: 'Execute Python code safely' },
+    { id: 'local_file_search', name: 'Local File Search', icon: Database, description: 'Search files in the local directory' }
 ];
 
 interface AgentSettingsProps {
@@ -29,11 +30,11 @@ interface AgentSettingsProps {
 }
 
 const LLM_MODELS = [
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Most capable, slower' },
-    { id: 'gpt-4', name: 'GPT-4', description: 'Balanced performance' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and efficient' },
-    { id: 'claude-3-opus', name: 'Claude 3 Opus', description: 'Advanced reasoning' },
-    { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', description: 'Balanced capability' }
+    { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo', description: 'Most capable model (OpenAI)' },
+    { id: 'gpt-4', name: 'GPT-4', description: 'Balanced performance (OpenAI)' },
+    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and efficient (OpenAI)' },
+    { id: 'qwen3:4b', name: 'Qwen 3 4B', description: 'Local model via Ollama' },
+    { id: 'qwen2.5:7b', name: 'Qwen 2.5 7B', description: 'Local model via Ollama' }
 ];
 
 export default function AgentSettings({ settings, onSettingsChange }: AgentSettingsProps) {
@@ -51,8 +52,8 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
             rigor: 70,
             analysisDepth: 60,
             customInstructions: '',
-            enabledTools: ['web_search', 'database_query', 'code_analysis', 'data_processing'],
-            llmModel: 'gpt-4-turbo'
+            enabledTools: ['web_search', 'web_visit', 'scholar_search', 'python_interpreter'],
+            llmModel: 'gpt-4-turbo-preview'
         };
         setLocalSettings(defaultSettings);
     };

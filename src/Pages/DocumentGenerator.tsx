@@ -6,7 +6,7 @@ import DocumentViewer from '../components/document-gen/DocumentViewer';
 import TemplateSelector from '../components/document-gen/TemplateSelector';
 import TaskInput from '../components/document-gen/TaskInput';
 import AgentSettings from '../components/document-gen/AgentSettings';
-import { mockAgentWorkflow } from '../components/document-gen/mockBackend';
+import { agentWorkflow } from '../components/document-gen/agentWorkflow';
 
 export default function DocumentGenerator() {
     const [stage, setStage] = useState('template-selection'); // template-selection, task-input, clarification, processing, complete
@@ -20,8 +20,8 @@ export default function DocumentGenerator() {
         rigor: 70,
         analysisDepth: 60,
         customInstructions: '',
-        enabledTools: ['web_search', 'database_query', 'code_analysis', 'data_processing'],
-        llmModel: 'gpt-4-turbo'
+        enabledTools: ['web_search', 'web_visit', 'scholar_search', 'python_interpreter'],
+        llmModel: 'gpt-4-turbo-preview'
     });
 
     const handleTemplateSelect = (template) => {
@@ -48,7 +48,7 @@ export default function DocumentGenerator() {
 
         // Simulate asking clarification questions
         setTimeout(() => {
-            const questions = mockAgentWorkflow.generateClarificationQuestions(selectedTemplate, task);
+            const questions = agentWorkflow.generateClarificationQuestions(selectedTemplate, task);
             setPendingQuestions(questions);
             setMessages(prev => [...prev, {
                 id: Date.now(),
@@ -74,7 +74,7 @@ export default function DocumentGenerator() {
         setPendingQuestions(null);
 
         // Simulate agent thinking and document generation
-        await mockAgentWorkflow.generateDocument(
+        await agentWorkflow.generateDocument(
             selectedTemplate,
             answers,
             (message) => {
@@ -99,7 +99,7 @@ export default function DocumentGenerator() {
         setIsProcessing(true);
 
         // Simulate refinement
-        await mockAgentWorkflow.refineDocument(
+        await agentWorkflow.refineDocument(
             document,
             request,
             (message) => {
