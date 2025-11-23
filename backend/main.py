@@ -2,8 +2,9 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from agents.factory import create_research_agent
 from config.settings import settings
@@ -46,7 +47,14 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # React dev servers
+    allow_origins=[
+        "http://localhost:3000",   # React dev server
+        "http://localhost:5173",   # Vite dev server (default)
+        "http://localhost:5174",   # Vite dev server (current)
+        "http://127.0.0.1:3000",   # Alternative localhost
+        "http://127.0.0.1:5173",   # Alternative localhost
+        "http://127.0.0.1:5174",   # Alternative localhost
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

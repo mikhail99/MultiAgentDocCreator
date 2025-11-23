@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 class DeepResearchLLM(ChatOpenAI):
     """Enhanced OpenAI LLM client for deep research with tool calling support."""
 
+    system_prompt: str = ""  # Add system_prompt as a valid field
+
     def __init__(self, tools=None, **kwargs):
         # Set defaults for research tasks
         defaults = {

@@ -19,7 +19,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # LLM Provider Configuration
-    llm_provider: str = "openai"  # "openai" or "ollama"
+    llm_provider: str = "ollama"  # "openai" or "ollama"
 
     # OpenAI Configuration
     openai_api_key: str = ""
