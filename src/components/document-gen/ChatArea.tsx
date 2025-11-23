@@ -1,105 +1,114 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Loader2 } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
+import { useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import MessageBubble from './MessageBubble';
 import TaskInput from './TaskInput';
 import ClarificationQuestions from './ClarificationQuestions';
+import RefinementInput from './RefinementInput';
+
+interface Message {
+    id: string | number;
+    type: string;
+    content?: string;
+    agent?: string;
+    status?: string;
+    toolName?: string;
+    parameters?: any;
+    result?: string;
+    questions?: string[];
+    answers?: string[];
+    files?: { name: string; instructions?: string }[];
+}
+
+interface Template {
+    id: string;
+    name: string;
+    description: string;
+    icon: any;
+    color: string;
+    features: string[];
+}
+
+interface ChatAreaProps {
+    messages: Message[];
+    isProcessing: boolean;
+    stage: string;
+    selectedTemplate: Template | null;
+    pendingQuestions: string[] | null;
+    onTaskSubmit: (task: string, files: any[]) => void;
+    onClarificationSubmit: (answers: string[]) => void;
+    onRefinementRequest: (request: string) => void;
+}
 
 export default function ChatArea({
-  messages,
-  isProcessing,
-  stage,
-  selectedTemplate,
-  pendingQuestions,
-  onTaskSubmit,
-  onClarificationSubmit,
-  onRefinementRequest
-}) {
-  const messagesEndRef = useRef(null);
+    messages,
+    isProcessing,
+    stage,
+    selectedTemplate,
+    pendingQuestions,
+    onTaskSubmit,
+    onClarificationSubmit,
+    onRefinementRequest
+}: ChatAreaProps) {
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const handleRefinementSubmit = (request) => {
-    if (request.trim()) {
-      onRefinementRequest(request);
-    }
-  };
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-
-        {/* Current Stage Content */}
-        {stage === 'task-input' && (
-          <div className="mt-6">
-            <TaskInput
-              onSubmit={onTaskSubmit}
-              isProcessing={isProcessing}
-            />
-          </div>
-        )}
-
-        {stage === 'clarification' && pendingQuestions && (
-          <div className="mt-6">
-            <ClarificationQuestions
-              questions={pendingQuestions}
-              onSubmit={onClarificationSubmit}
-              isProcessing={isProcessing}
-            />
-          </div>
-        )}
-
-        {(stage === 'processing' || stage === 'complete') && (
-          <div className="mt-6">
-            <div className="bg-slate-50 rounded-xl p-6">
-              <h3 className="text-sm font-medium text-slate-900 mb-3">
-                Need changes? Request a refinement:
-              </h3>
-              <div className="flex gap-3">
-                <Textarea
-                  placeholder="Describe what you'd like to change..."
-                  className="flex-1 min-h-[60px] resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleRefinementSubmit(e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                />
-                <Button
-                  onClick={(e) => {
-                    const textarea = e.target.closest('.flex').querySelector('textarea');
-                    handleRefinementSubmit(textarea.value);
-                    textarea.value = '';
-                  }}
-                  disabled={isProcessing}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+    return (
+        <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-sm font-medium text-slate-700">
+                        {selectedTemplate?.name || 'Conversation'}
+                    </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                    {stage === 'task-input' && 'Describe your task'}
+                    {stage === 'clarification' && 'Answering clarification questions'}
+                    {stage === 'processing' && 'Agents are working on your document'}
+                    {stage === 'complete' && 'Document ready - request refinements'}
+                </p>
             </div>
-          </div>
-        )}
 
-        <div ref={messagesEndRef} />
-      </div>
-    </div>
-  );
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+                <AnimatePresence>
+                    {messages.map((message: Message, index: number) => (
+                        <motion.div
+                            key={message.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: index * 0.05 }}
+                        >
+                            <MessageBubble message={message} />
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
+                <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area */}
+            <div className="border-t border-slate-200 bg-white">
+                {stage === 'task-input' && (
+                    <TaskInput onSubmit={onTaskSubmit} isProcessing={isProcessing} />
+                )}
+                {stage === 'clarification' && pendingQuestions && !isProcessing && (
+                    <ClarificationQuestions
+                        questions={pendingQuestions}
+                        onSubmit={onClarificationSubmit}
+                    />
+                )}
+                {stage === 'complete' && (
+                    <RefinementInput
+                        onSubmit={onRefinementRequest}
+                        isProcessing={isProcessing}
+                    />
+                )}
+            </div>
+        </div>
+    );
 }

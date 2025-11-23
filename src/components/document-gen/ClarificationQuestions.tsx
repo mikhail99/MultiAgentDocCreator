@@ -1,72 +1,66 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Send, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
+import { CheckCircle2, Send } from 'lucide-react';
 
-export default function ClarificationQuestions({ questions, onSubmit, isProcessing }) {
-  const [answers, setAnswers] = useState(questions.map(() => ''));
+interface ClarificationQuestionsProps {
+    questions: string[];
+    onSubmit: (answers: string[]) => void;
+}
 
-  const handleAnswerChange = (index, value) => {
-    const newAnswers = [...answers];
-    newAnswers[index] = value;
-    setAnswers(newAnswers);
-  };
+export default function ClarificationQuestions({ questions, onSubmit }: ClarificationQuestionsProps) {
+    const [answers, setAnswers] = useState(questions.map(() => ''));
 
-  const handleSubmit = () => {
-    if (answers.every(answer => answer.trim())) {
-      onSubmit(answers);
-    }
-  };
+    const handleAnswerChange = (index: number, value: string) => {
+        const newAnswers = [...answers];
+        newAnswers[index] = value;
+        setAnswers(newAnswers);
+    };
 
-  const canSubmit = answers.every(answer => answer.trim()) && !isProcessing;
+    const handleSubmit = () => {
+        if (answers.every(a => a.trim())) {
+            onSubmit(answers);
+        }
+    };
 
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-6">
-      <div className="text-center">
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">
-          Clarification Needed
-        </h3>
-        <p className="text-sm text-slate-600">
-          Please answer these questions to help our agents create the best document for you.
-        </p>
-      </div>
+    const allAnswered = answers.every((a: string) => a.trim());
 
-      <div className="space-y-4">
-        {questions.map((question, index) => (
-          <div key={index} className="space-y-2">
-            <label className="block text-sm font-medium text-slate-700">
-              {question}
-            </label>
-            <Textarea
-              value={answers[index]}
-              onChange={(e) => handleAnswerChange(index, e.target.value)}
-              placeholder="Your answer here..."
-              className="min-h-[80px] resize-none"
-              disabled={isProcessing}
-            />
-          </div>
-        ))}
-      </div>
+    return (
+        <div className="p-6 space-y-4 bg-gradient-to-br from-indigo-50 to-purple-50">
+            <div className="space-y-4">
+                {questions.map((question: string, index: number) => (
+                    <div key={index} className="space-y-2">
+                        <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 h-6 w-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-medium mt-0.5">
+                                {index + 1}
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-slate-700 mb-2">{question}</p>
+                                <Textarea
+                                    placeholder="Your answer..."
+                                    value={answers[index]}
+                                    onChange={(e) => handleAnswerChange(index, e.target.value)}
+                                    className="min-h-[80px] resize-none text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                                />
+                            </div>
+                            {answers[index].trim() && (
+                                <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
 
-      <div className="flex justify-end">
-        <Button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white flex items-center gap-2"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <Send className="h-4 w-4" />
-              Submit Answers
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
+            <div className="flex justify-end pt-2">
+                <Button
+                    onClick={handleSubmit}
+                    disabled={!allAnswered}
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white flex items-center gap-2"
+                >
+                    <Send className="h-4 w-4" />
+                    Submit Answers
+                </Button>
+            </div>
+        </div>
+    );
 }
