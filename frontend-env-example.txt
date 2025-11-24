@@ -1,0 +1,8 @@
+# Frontend environment variables for Vite
+# Create a .env file in the project root with this content:
+
+VITE_API_URL=http://localhost:8000
+
+# Note: In Vite, environment variables must be prefixed with VITE_
+# to be accessible in the browser. They are accessed via import.meta.env
+# instead of process.env

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -6,44 +6,118 @@ import { Slider } from '../ui/slider';
 import { Switch } from '../ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
-import { Settings, Sparkles, Zap, Brain, Database, Search, Code } from 'lucide-react';
+import { Settings, Sparkles, Zap, Brain, Database, Search, Code, Save, Plus, Trash2, Edit2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
+import { toast } from 'sonner';
 
 const AVAILABLE_TOOLS = [
     { id: 'web_search', name: 'Web Search', icon: Search, description: 'Search the internet for information' },
-    { id: 'web_visit', name: 'Web Visit', icon: Search, description: 'Visit and extract content from web pages' },
-    { id: 'scholar_search', name: 'Scholar Search', icon: Database, description: 'Search academic publications' },
-    { id: 'python_interpreter', name: 'Python Interpreter', icon: Code, description: 'Execute Python code safely' },
-    { id: 'local_file_search', name: 'Local File Search', icon: Database, description: 'Search files in the local directory' }
+    { id: 'database_query', name: 'Database Query', icon: Database, description: 'Query internal databases' },
+    { id: 'code_analysis', name: 'Code Analysis', icon: Code, description: 'Analyze and generate code' },
+    { id: 'data_processing', name: 'Data Processing', icon: Zap, description: 'Process and transform data' }
+];
+
+const LLM_MODELS = [
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Most capable, slower' },
+    { id: 'gpt-4', name: 'GPT-4', description: 'Balanced performance' },
+    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and efficient' },
+    { id: 'claude-3-opus', name: 'Claude 3 Opus', description: 'Advanced reasoning' },
+    { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', description: 'Balanced capability' }
+];
+
+const AGENT_TYPES = [
+    { id: 'coordinator', name: 'Coordinator Agent', description: 'Orchestrates the workflow' },
+    { id: 'research', name: 'Research Agent', description: 'Gathers and synthesizes information' },
+    { id: 'writing', name: 'Writing Agent', description: 'Creates and structures content' },
+    { id: 'quality', name: 'Quality Control Agent', description: 'Reviews and refines output' }
 ];
 
 interface AgentSettingsProps {
-    settings: {
-        creativity: number;
-        rigor: number;
-        analysisDepth: number;
-        customInstructions: string;
-        enabledTools: string[];
-        llmModel: string;
-    };
-    onSettingsChange: (settings: AgentSettingsProps['settings']) => void;
+    settings: any;
+    onSettingsChange: (settings: any) => void;
 }
-
-const LLM_MODELS = [
-    { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo', description: 'Most capable model (OpenAI)' },
-    { id: 'gpt-4', name: 'GPT-4', description: 'Balanced performance (OpenAI)' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and efficient (OpenAI)' },
-    { id: 'qwen3:4b', name: 'Qwen 3 4B', description: 'Local model via Ollama' },
-    { id: 'qwen2.5:7b', name: 'Qwen 2.5 7B', description: 'Local model via Ollama' }
-];
 
 export default function AgentSettings({ settings, onSettingsChange }: AgentSettingsProps) {
     const [localSettings, setLocalSettings] = useState(settings);
     const [isOpen, setIsOpen] = useState(false);
+    const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+    const [profileName, setProfileName] = useState('');
+    const [showPromptEditor, setShowPromptEditor] = useState(false);
+    const [profiles, setProfiles] = useState<any[]>([]);
 
-    const handleSave = () => {
+    // Load profiles from localStorage on component mount
+    useEffect(() => {
+        const savedProfiles = localStorage.getItem('agentProfiles');
+        if (savedProfiles) {
+            try {
+                setProfiles(JSON.parse(savedProfiles));
+            } catch (error) {
+                console.error('Failed to parse saved profiles:', error);
+            }
+        }
+    }, []);
+
+    const saveProfilesToStorage = (updatedProfiles: any[]) => {
+        localStorage.setItem('agentProfiles', JSON.stringify(updatedProfiles));
+        setProfiles(updatedProfiles);
+    };
+
+    const handleApply = () => {
         onSettingsChange(localSettings);
         setIsOpen(false);
+    };
+
+    const handleSaveProfile = () => {
+        if (!profileName.trim()) {
+            toast.error('Please enter a profile name');
+            return;
+        }
+
+        const profileData = {
+            id: currentProfileId || `profile_${Date.now()}`,
+            name: profileName,
+            creativity: localSettings.creativity,
+            rigor: localSettings.rigor,
+            analysisDepth: localSettings.analysisDepth,
+            customInstructions: localSettings.customInstructions,
+            agentPrompts: localSettings.agentPrompts || [],
+            llmModel: localSettings.llmModel,
+            enabledTools: localSettings.enabledTools
+        };
+
+        const updatedProfiles = currentProfileId
+            ? profiles.map(p => p.id === currentProfileId ? profileData : p)
+            : [...profiles, profileData];
+
+        saveProfilesToStorage(updatedProfiles);
+        toast.success(currentProfileId ? 'Profile updated' : 'Profile created');
+        setProfileName('');
+    };
+
+    const handleLoadProfile = (profile: any) => {
+        setLocalSettings({
+            creativity: profile.creativity,
+            rigor: profile.rigor,
+            analysisDepth: profile.analysisDepth,
+            customInstructions: profile.customInstructions || '',
+            agentPrompts: profile.agentPrompts || [],
+            llmModel: profile.llmModel,
+            enabledTools: profile.enabledTools
+        });
+        setCurrentProfileId(profile.id);
+        setProfileName(profile.name);
+        toast.success(`Loaded profile: ${profile.name}`);
+    };
+
+    const handleDeleteProfile = (id: string, name: string) => {
+        if (confirm(`Delete profile "${name}"?`)) {
+            const updatedProfiles = profiles.filter(p => p.id !== id);
+            saveProfilesToStorage(updatedProfiles);
+            toast.success('Profile deleted');
+            if (currentProfileId === id) {
+                handleReset();
+            }
+        }
     };
 
     const handleReset = () => {
@@ -52,21 +126,47 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
             rigor: 70,
             analysisDepth: 60,
             customInstructions: '',
-            enabledTools: ['web_search', 'web_visit', 'scholar_search', 'python_interpreter'],
-            llmModel: 'gpt-4-turbo-preview'
+            agentPrompts: AGENT_TYPES.map(agent => ({ agentName: agent.id, prompt: '' })),
+            enabledTools: ['web_search', 'database_query', 'code_analysis', 'data_processing'],
+            llmModel: 'gpt-4-turbo'
         };
         setLocalSettings(defaultSettings);
+        setCurrentProfileId(null);
+        setProfileName('');
     };
 
+    const handleNewProfile = () => {
+        handleReset();
+        toast.info('Create a new profile');
+    };
+
+    useEffect(() => {
+        if (!localSettings.agentPrompts) {
+            setLocalSettings((prev: any) => ({
+                ...prev,
+                agentPrompts: AGENT_TYPES.map(agent => ({ agentName: agent.id, prompt: '' }))
+            }));
+        }
+    }, []);
+
     const updateSetting = (key: string, value: any) => {
-        setLocalSettings(prev => ({ ...prev, [key]: value }));
+        setLocalSettings((prev: any) => ({ ...prev, [key]: value }));
+    };
+
+    const updateAgentPrompt = (agentName: string, prompt: string) => {
+        setLocalSettings((prev: any) => ({
+            ...prev,
+            agentPrompts: prev.agentPrompts.map((ap: any) =>
+                ap.agentName === agentName ? { ...ap, prompt } : ap
+            )
+        }));
     };
 
     const toggleTool = (toolId: string) => {
-        setLocalSettings(prev => ({
+        setLocalSettings((prev: any) => ({
             ...prev,
             enabledTools: prev.enabledTools.includes(toolId)
-                ? prev.enabledTools.filter(id => id !== toolId)
+                ? prev.enabledTools.filter((id: string) => id !== toolId)
                 : [...prev.enabledTools, toolId]
         }));
     };
@@ -91,10 +191,68 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
                 </SheetHeader>
 
                 <div className="py-6 space-y-6">
+                    {/* Profile Management */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-sm font-semibold">Agent Profiles</Label>
+                            <Button variant="outline" size="sm" onClick={handleNewProfile} className="h-7 text-xs">
+                                <Plus className="h-3 w-3 mr-1" />
+                                New
+                            </Button>
+                        </div>
+
+                        {profiles.length > 0 && (
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                                {profiles.map(profile => (
+                                    <div
+                                        key={profile.id}
+                                        className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
+                                            currentProfileId === profile.id
+                                                ? 'border-indigo-400 bg-indigo-50'
+                                                : 'border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        <button
+                                            onClick={() => handleLoadProfile(profile)}
+                                            className="flex-1 text-left text-sm font-medium text-slate-900"
+                                        >
+                                            {profile.name}
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteProfile(profile.id, profile.name)}
+                                            className="text-slate-400 hover:text-red-600 ml-2"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Profile name..."
+                                value={profileName}
+                                onChange={(e) => setProfileName(e.target.value)}
+                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                            <Button
+                                onClick={handleSaveProfile}
+                                size="sm"
+                                disabled={!profileName.trim()}
+                                className="h-9"
+                            >
+                                <Save className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    <Separator />
                     {/* LLM Model Selection */}
                     <div className="space-y-3">
                         <Label className="text-sm font-semibold">Language Model</Label>
-                        <Select value={localSettings.llmModel} onValueChange={(value: string) => updateSetting('llmModel', value)}>
+                        <Select value={localSettings.llmModel} onValueChange={(value) => updateSetting('llmModel', value)}>
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
@@ -124,7 +282,7 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
                         </div>
                         <Slider
                             value={[localSettings.creativity]}
-                            onValueChange={(value: number[]) => updateSetting('creativity', value[0])}
+                            onValueChange={(value) => updateSetting('creativity', value[0])}
                             min={0}
                             max={100}
                             step={5}
@@ -146,7 +304,7 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
                         </div>
                         <Slider
                             value={[localSettings.rigor]}
-                            onValueChange={(value: number[]) => updateSetting('rigor', value[0])}
+                            onValueChange={(value) => updateSetting('rigor', value[0])}
                             min={0}
                             max={100}
                             step={5}
@@ -168,7 +326,7 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
                         </div>
                         <Slider
                             value={[localSettings.analysisDepth]}
-                            onValueChange={(value: number[]) => updateSetting('analysisDepth', value[0])}
+                            onValueChange={(value) => updateSetting('analysisDepth', value[0])}
                             min={0}
                             max={100}
                             step={5}
@@ -192,6 +350,51 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
                         />
                         <p className="text-xs text-slate-500">
                             These instructions will guide all agents in the workflow
+                        </p>
+                    </div>
+
+                    <Separator />
+
+                    {/* Agent Prompts Editor */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-sm font-semibold">Agent Prompts</Label>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowPromptEditor(!showPromptEditor)}
+                                className="h-7 text-xs"
+                            >
+                                <Edit2 className="h-3 w-3 mr-1" />
+                                {showPromptEditor ? 'Hide' : 'Edit'}
+                            </Button>
+                        </div>
+
+                        {showPromptEditor && (
+                            <div className="space-y-3">
+                                {AGENT_TYPES.map(agent => {
+                                    const agentPrompt = localSettings.agentPrompts?.find(
+                                        (ap: any) => ap.agentName === agent.id
+                                    );
+                                    return (
+                                        <div key={agent.id} className="space-y-2">
+                                            <div>
+                                                <p className="text-sm font-medium text-slate-900">{agent.name}</p>
+                                                <p className="text-xs text-slate-500">{agent.description}</p>
+                                            </div>
+                                            <Textarea
+                                                placeholder={`Custom prompt for ${agent.name}...`}
+                                                value={agentPrompt?.prompt || ''}
+                                                onChange={(e) => updateAgentPrompt(agent.id, e.target.value)}
+                                                className="min-h-[80px] resize-none text-xs bg-white font-mono"
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        <p className="text-xs text-slate-500">
+                            Customize individual agent behavior with specific prompts
                         </p>
                     </div>
 
@@ -234,9 +437,9 @@ export default function AgentSettings({ settings, onSettingsChange }: AgentSetti
                 {/* Footer Actions */}
                 <div className="flex gap-3 pt-6 border-t">
                     <Button variant="outline" onClick={handleReset} className="flex-1">
-                        Reset to Default
+                        Reset
                     </Button>
-                    <Button onClick={handleSave} className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+                    <Button onClick={handleApply} className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
                         Apply Settings
                     </Button>
                 </div>

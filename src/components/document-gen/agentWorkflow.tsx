@@ -154,6 +154,70 @@ All API requests require authentication using Bearer tokens...
 };
 
 export const agentWorkflow = {
+    performResearch: async (query: string, customInstructions: string, onMessage: (message: Message) => void) => {
+        try {
+            // Send initial processing message
+            onMessage({
+                id: Date.now().toString(),
+                type: 'thinking',
+                agent: 'Research Agent',
+                content: 'Starting deep research process...',
+                status: 'processing'
+            });
+
+            // Use streaming research API for real-time updates
+            let messageId = Date.now() + 1;
+            let allSources: any[] = [];
+
+            for await (const event of apiClient.performResearchStream(query, customInstructions)) {
+                if (event.type === 'message') {
+                    const apiMessage = event.data as Message;
+                    const frontendMessage: Message = {
+                        ...apiMessage,
+                        id: (messageId++).toString(),
+                        status: apiMessage.type === 'thinking' ? 'processing' : 'complete'
+                    };
+
+                    // Collect sources
+                    if (frontendMessage.sources) {
+                        allSources.push(...frontendMessage.sources);
+                    }
+
+                    onMessage(frontendMessage);
+                } else if (event.type === 'complete') {
+                    // Send completion message with sources
+                    onMessage({
+                        id: (messageId++).toString(),
+                        type: 'document-update',
+                        content: `✨ Research complete! Found ${allSources.length} sources.`,
+                        sources: allSources
+                    });
+                    break;
+                } else if (event.type === 'error') {
+                    console.error('Streaming error:', event.data);
+                    onMessage({
+                        id: (messageId++).toString(),
+                        type: 'thinking',
+                        agent: 'Research Agent',
+                        content: `Research failed: ${event.data.error}`,
+                        status: 'complete'
+                    });
+                    break;
+                }
+            }
+
+        } catch (error) {
+            console.error('Research failed:', error);
+            onMessage({
+                id: Date.now().toString(),
+                type: 'thinking',
+                agent: 'Research Agent',
+                content: `Research failed: ${error.message}`,
+                status: 'complete'
+            });
+        }
+    },
+
     generateClarificationQuestions: async (template, task) => {
         try {
             const response = await apiClient.getClarificationQuestions(template.id, task);
@@ -187,56 +251,80 @@ export const agentWorkflow = {
         }
     },
 
-    generateDocument: async (template, answers, onMessage, onDocumentUpdate) => {
+    generateDocument: async (template, task, answers, onMessage, onDocumentUpdate) => {
         try {
             // Send initial processing message
             onMessage({
-                id: Date.now(),
+                id: Date.now().toString(),
                 type: 'thinking',
                 agent: 'Research Agent',
                 content: 'Starting deep research and document generation process...',
                 status: 'processing'
             });
 
-            // Call the real API
-            const response = await apiClient.generateDocument({
-                template_id: template.id,
-                task: '', // This would come from the task input, but we'll reconstruct it
-                answers: answers,
-                agent_settings: {} // Could be passed from agent settings
-            });
+            // Create a comprehensive research query based on template, task, and answers
+            let researchQuery = `Generate a ${template.name} about: ${task}\n\n`;
 
-            // Convert API messages to frontend format
-            // Backend now returns Messages that match our interface, so minimal conversion needed
-            for (const apiMessage of response.messages) {
-                const frontendMessage: Message = {
-                    ...apiMessage,
-                    // Ensure ID is string (backend might return numbers)
-                    id: apiMessage.id.toString(),
-                    // Set appropriate status for UX
-                    status: apiMessage.type === 'thinking' ? 'processing' : 'complete'
-                };
-
-                onMessage(frontendMessage);
-
-                // Add a small delay for better UX (simulating non-streaming processing)
-                await new Promise(resolve => setTimeout(resolve, 800));
+            if (answers && Object.keys(answers).length > 0) {
+                researchQuery += "Additional requirements:\n";
+                Object.entries(answers).forEach(([key, value]) => {
+                    researchQuery += `- ${key}: ${value}\n`;
+                });
             }
 
-            // Send completion message
-            onMessage({
-                id: (messageId++).toString(),
-                type: 'document-update',
-                content: '✨ Document generation complete! The research-backed document is ready for your review.'
-            });
+            researchQuery += `\nPlease research thoroughly and generate a comprehensive document following the ${template.name} format and structure. Include relevant data, analysis, and insights.`;
 
-            // Update document with final answer
-            if (response.final_answer) {
-                onDocumentUpdate(response.final_answer);
-            } else {
-                // Fallback to sample document if no final answer
-                const doc = SAMPLE_DOCUMENTS[template.id] || SAMPLE_DOCUMENTS['academic-review'];
-                onDocumentUpdate(doc);
+            // Use streaming research API for real-time updates
+            let messageId = Date.now() + 1;
+            let finalDocument = null;
+
+            for await (const event of apiClient.performResearchStream(researchQuery)) {
+                if (event.type === 'message') {
+                    const apiMessage = event.data as Message;
+                    const frontendMessage: Message = {
+                        ...apiMessage,
+                        id: (messageId++).toString(),
+                        status: apiMessage.type === 'thinking' ? 'processing' : 'complete'
+                    };
+
+                    // Extract final answer from agent messages
+                    if (apiMessage.type === 'agent' && apiMessage.content && !apiMessage.toolName) {
+                        finalDocument = apiMessage.content;
+                    }
+
+                    onMessage(frontendMessage);
+                } else if (event.type === 'complete') {
+                    // Send completion message
+                    onMessage({
+                        id: (messageId++).toString(),
+                        type: 'document-update',
+                        content: '✨ Document generation complete! The research-backed document is ready for your review.'
+                    });
+
+                    // Update document
+                    if (finalDocument) {
+                        onDocumentUpdate(finalDocument);
+                    } else {
+                        // Fallback to sample document
+                        const doc = SAMPLE_DOCUMENTS[template.id] || SAMPLE_DOCUMENTS['academic-review'];
+                        onDocumentUpdate(doc);
+                    }
+                    break;
+                } else if (event.type === 'error') {
+                    console.error('Streaming error:', event.data);
+                    onMessage({
+                        id: (messageId++).toString(),
+                        type: 'thinking',
+                        agent: 'System',
+                        content: `Document generation failed: ${event.data.error}`,
+                        status: 'complete'
+                    });
+
+                    // Fallback to sample document
+                    const doc = SAMPLE_DOCUMENTS[template.id] || SAMPLE_DOCUMENTS['academic-review'];
+                    onDocumentUpdate(doc);
+                    break;
+                }
             }
 
         } catch (error) {
@@ -280,22 +368,41 @@ ${currentDoc}
 
 Apply the requested changes while maintaining document quality and coherence.`;
 
-            // Call the research API for refinement
-            const response = await apiClient.performResearch(refinementQuery);
-
-            // Convert API messages to frontend format
+            // Use streaming research API for real-time updates
             let messageId = Date.now() + 1;
-            for (const apiMessage of response.messages.slice(1)) { // Skip the initial user message
-                const frontendMessage: Message = {
-                    id: (messageId++).toString(),
-                    type: this._convertMessageType(apiMessage),
-                    agent: 'Writing Agent',
-                    content: apiMessage.content,
-                    status: 'processing'
-                };
+            let sources: any[] = [];
 
-                onMessage(frontendMessage);
-                await new Promise(resolve => setTimeout(resolve, 300));
+            for await (const event of apiClient.performResearchStream(refinementQuery)) {
+                if (event.type === 'message') {
+                    const apiMessage = event.data as Message;
+                    const frontendMessage: Message = {
+                        ...apiMessage,
+                        id: (messageId++).toString(),
+                        agent: 'Writing Agent',
+                        status: apiMessage.type === 'thinking' ? 'processing' : 'complete'
+                    };
+
+                    // Collect sources
+                    if (frontendMessage.sources) {
+                        sources.push(...frontendMessage.sources);
+                    }
+
+                    onMessage(frontendMessage);
+                } else if (event.type === 'complete') {
+                    // Store sources for later use
+                    console.log('Refinement complete with sources:', sources);
+                    break;
+                } else if (event.type === 'error') {
+                    console.error('Streaming error:', event.data);
+                    onMessage({
+                        id: (messageId++).toString(),
+                        type: 'thinking',
+                        agent: 'Writing Agent',
+                        content: `Error during refinement: ${event.data.error}`,
+                        status: 'complete'
+                    });
+                    break;
+                }
             }
 
             // Send completion message

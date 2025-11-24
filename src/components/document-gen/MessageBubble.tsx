@@ -22,12 +22,12 @@ export default function MessageBubble({ message }) {
                                 ))}
                             </div>
                         )}
-                        {message.answers && (
+                        {message.answers && typeof message.answers === 'object' && Object.keys(message.answers).length > 0 && (
                             <div className="mt-3 pt-3 border-t border-white/20 space-y-2">
-                                {message.answers.map((answer, idx) => (
-                                    <div key={idx} className="text-xs">
-                                        <span className="text-white/70">Q{idx + 1}:</span>
-                                        <span className="ml-2 text-white/90">{answer}</span>
+                                {Object.entries(message.answers).map(([key, answer], idx) => (
+                                    <div key={key} className="text-xs">
+                                        <span className="text-white/70">{key}:</span>
+                                        <span className="ml-2 text-white/90">{String(answer)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -57,7 +57,7 @@ export default function MessageBubble({ message }) {
                 <div className="flex-1">
                     <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-md px-5 py-3 shadow-sm">
                         <p className="text-sm text-slate-700 leading-relaxed">{message.content}</p>
-                        {message.questions && (
+                        {message.questions && Array.isArray(message.questions) && message.questions.length > 0 && (
                             <div className="mt-4 space-y-2">
                                 {message.questions.map((q, idx) => (
                                     <div key={idx} className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-600">
@@ -164,6 +164,30 @@ export default function MessageBubble({ message }) {
                                 <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
                                     <p className="text-xs text-slate-500 mb-2">Result:</p>
                                     <p className="text-sm text-slate-700">{message.result}</p>
+                                </div>
+                            )}
+                            {message.sources && message.sources.length > 0 && (
+                                <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+                                    <p className="text-xs text-slate-500 mb-2">Sources:</p>
+                                    <div className="space-y-2">
+                                        {message.sources.map((source, idx) => (
+                                            <a
+                                                key={idx}
+                                                href={source.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                                            >
+                                                <div className="flex items-start gap-2">
+                                                    <span className="inline-block w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></span>
+                                                    <div>
+                                                        <div className="font-medium">{source.title}</div>
+                                                        <div className="text-xs text-slate-500 truncate">{source.url}</div>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </motion.div>

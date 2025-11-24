@@ -187,8 +187,9 @@ export const agentWorkflow = {
         }
     },
 
-    generateDocument: async (template, answers, onMessage, onDocumentUpdate) => {
+    generateDocument: async (template, task, answers, onMessage, onDocumentUpdate) => {
         try {
+            let messageId = Date.now() + 1;
             // Send initial processing message
             onMessage({
                 id: Date.now(),
@@ -201,8 +202,8 @@ export const agentWorkflow = {
             // Call the real API
             const response = await apiClient.generateDocument({
                 template_id: template.id,
-                task: '', // This would come from the task input, but we'll reconstruct it
-                answers: answers,
+                task: task || 'Generate a document based on the template and clarification answers',
+                answers: answers, // answers should already be in dict format from DocumentGenerator
                 agent_settings: {} // Could be passed from agent settings
             });
 
@@ -285,15 +286,13 @@ Apply the requested changes while maintaining document quality and coherence.`;
 
             // Convert API messages to frontend format
             let messageId = Date.now() + 1;
-            for (const apiMessage of response.messages.slice(1)) { // Skip the initial user message
+            for (const apiMessage of response.messages.slice(1)) {
                 const frontendMessage: Message = {
+                    ...apiMessage,
                     id: (messageId++).toString(),
-                    type: this._convertMessageType(apiMessage),
                     agent: 'Writing Agent',
-                    content: apiMessage.content,
-                    status: 'processing'
+                    status: apiMessage.type === 'thinking' ? 'processing' : 'complete'
                 };
-
                 onMessage(frontendMessage);
                 await new Promise(resolve => setTimeout(resolve, 300));
             }

@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-export default function DocumentViewer({ document, selectedTemplate, isGenerating }) {
+export default function DocumentViewer({ document, selectedTemplate, isGenerating, sources = [] }) {
     const handleCopy = () => {
         navigator.clipboard.writeText(document);
         toast.success('Document copied to clipboard');
@@ -158,6 +158,35 @@ export default function DocumentViewer({ document, selectedTemplate, isGeneratin
                         >
                             {document}
                         </ReactMarkdown>
+
+                        {sources && sources.length > 0 && (
+                            <div className="mt-8 pt-6 border-t border-slate-200">
+                                <h3 className="text-lg font-semibold text-slate-900 mb-4">Sources</h3>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    {sources.map((source, idx) => (
+                                        <a
+                                            key={idx}
+                                            href={source.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-4 transition-colors"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-sm font-medium text-slate-900 truncate">
+                                                        {source.title}
+                                                    </h4>
+                                                    <p className="text-xs text-slate-500 truncate mt-1">
+                                                        {source.url}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </motion.div>
             </div>

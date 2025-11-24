@@ -1,0 +1,75 @@
+{
+    "name": "AgentProfile",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Name of the agent profile"
+      },
+      "creativity": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 50,
+        "description": "Creativity level (0-100)"
+      },
+      "rigor": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 70,
+        "description": "Rigor level (0-100)"
+      },
+      "analysisDepth": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 60,
+        "description": "Analysis depth level (0-100)"
+      },
+      "customInstructions": {
+        "type": "string",
+        "description": "Custom instructions for the agent team"
+      },
+      "agentPrompts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "agentName": {
+              "type": "string"
+            },
+            "prompt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agentName",
+            "prompt"
+          ]
+        },
+        "description": "Specific prompts for individual agents"
+      },
+      "llmModel": {
+        "type": "string",
+        "default": "gpt-4-turbo",
+        "description": "Selected LLM model ID"
+      },
+      "enabledTools": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "web_search",
+          "database_query",
+          "code_analysis",
+          "data_processing"
+        ],
+        "description": "List of enabled tool IDs"
+      }
+    },
+    "required": [
+      "name"
+    ]
+  }

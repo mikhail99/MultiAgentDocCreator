@@ -11,10 +11,13 @@ import { agentWorkflow } from '../components/document-gen/agentWorkflow';
 export default function DocumentGenerator() {
     const [stage, setStage] = useState('template-selection'); // template-selection, task-input, clarification, processing, complete
     const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [task, setTask] = useState('');
     const [messages, setMessages] = useState([]);
     const [document, setDocument] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [pendingQuestions, setPendingQuestions] = useState(null);
+    const [sources, setSources] = useState([]);
+    const [messageIdCounter, setMessageIdCounter] = useState(0);
     const [agentSettings, setAgentSettings] = useState({
         creativity: 50,
         rigor: 70,
@@ -24,49 +27,93 @@ export default function DocumentGenerator() {
         llmModel: 'gpt-4-turbo-preview'
     });
 
+    const generateMessageId = () => {
+        const newId = messageIdCounter + 1;
+        setMessageIdCounter(newId);
+        return `msg_${Date.now()}_${newId}`;
+    };
+
+    const addMessage = (message) => {
+        const newMessage = { ...message, id: generateMessageId() };
+        setMessages(prev => [...prev, newMessage]);
+
+        // Collect sources from tool messages
+        if (newMessage.sources && newMessage.sources.length > 0) {
+            setSources(prev => {
+                const existingUrls = new Set(prev.map(s => s.url));
+                const newSources = newMessage.sources.filter(s => !existingUrls.has(s.url));
+                return [...prev, ...newSources];
+            });
+        }
+    };
+
     const handleTemplateSelect = (template) => {
         setSelectedTemplate(template);
         setStage('task-input');
         setMessages([{
-            id: Date.now(),
+            id: generateMessageId(),
             type: 'system',
             content: `Template selected: **${template.name}**. Now describe your task.`
         }]);
     };
 
-    const handleTaskSubmit = async (task, files) => {
+    const handleTaskSubmit = async (taskInput, files) => {
+        // Store the task for later use in document generation
+        setTask(taskInput);
+
         // Add user task to messages
         setMessages(prev => [...prev, {
-            id: Date.now(),
+            id: generateMessageId(),
             type: 'user',
-            content: task,
+            content: taskInput,
             files: files
         }]);
 
         setStage('clarification');
         setIsProcessing(true);
 
-        // Simulate asking clarification questions
-        setTimeout(() => {
-            const questions = agentWorkflow.generateClarificationQuestions(selectedTemplate, task);
-            setPendingQuestions(questions);
-            setMessages(prev => [...prev, {
-                id: Date.now(),
-                type: 'agent',
-                content: 'I need to understand your requirements better. Please answer these questions:',
-                questions: questions
-            }]);
-            setIsProcessing(false);
-        }, 1500);
+        // Get clarification questions
+        (async () => {
+            try {
+                const questions = await agentWorkflow.generateClarificationQuestions(selectedTemplate, taskInput);
+                setPendingQuestions(questions);
+                setMessages(prev => [...prev, {
+                    id: generateMessageId(),
+                    type: 'agent',
+                    content: 'I need to understand your requirements better. Please answer these questions:',
+                    questions: questions
+                }]);
+            } catch (error) {
+                console.error('Failed to get clarification questions:', error);
+                // Fallback to empty questions
+                setPendingQuestions([]);
+                setMessages(prev => [...prev, {
+                    id: generateMessageId(),
+                    type: 'agent',
+                    content: 'Ready to proceed with document generation.',
+                    questions: []
+                }]);
+            } finally {
+                setIsProcessing(false);
+            }
+        })();
     };
 
     const handleClarificationSubmit = async (answers) => {
+        // Convert answers array to dictionary format expected by backend
+        const answersDict = {};
+        if (Array.isArray(answers)) {
+            answers.forEach((answer, index) => {
+                answersDict[`question_${index + 1}`] = answer;
+            });
+        }
+
         // Add answers to messages
         setMessages(prev => [...prev, {
-            id: Date.now(),
+            id: generateMessageId(),
             type: 'user',
             content: 'Clarification answers provided',
-            answers: answers
+            answers: answersDict
         }]);
 
         setStage('processing');
@@ -76,7 +123,8 @@ export default function DocumentGenerator() {
         // Simulate agent thinking and document generation
         await agentWorkflow.generateDocument(
             selectedTemplate,
-            answers,
+            task,
+            answersDict,
             (message) => {
                 setMessages(prev => [...prev, message]);
             },
@@ -91,7 +139,7 @@ export default function DocumentGenerator() {
 
     const handleRefinementRequest = async (request) => {
         setMessages(prev => [...prev, {
-            id: Date.now(),
+            id: generateMessageId(),
             type: 'user',
             content: request
         }]);
@@ -119,6 +167,7 @@ export default function DocumentGenerator() {
         setMessages([]);
         setDocument('');
         setPendingQuestions(null);
+        setSources([]);
     };
 
     return (
@@ -173,6 +222,7 @@ export default function DocumentGenerator() {
                                 document={document}
                                 selectedTemplate={selectedTemplate}
                                 isGenerating={isProcessing && stage === 'processing'}
+                                sources={sources}
                             />
                         </div>
                     </>

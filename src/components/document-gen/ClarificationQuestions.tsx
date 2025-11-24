@@ -9,7 +9,8 @@ interface ClarificationQuestionsProps {
 }
 
 export default function ClarificationQuestions({ questions, onSubmit }: ClarificationQuestionsProps) {
-    const [answers, setAnswers] = useState(questions.map(() => ''));
+    const safeQuestions = Array.isArray(questions) ? questions : [];
+    const [answers, setAnswers] = useState(safeQuestions.map(() => ''));
 
     const handleAnswerChange = (index: number, value: string) => {
         const newAnswers = [...answers];
@@ -25,10 +26,23 @@ export default function ClarificationQuestions({ questions, onSubmit }: Clarific
 
     const allAnswered = answers.every((a: string) => a.trim());
 
+    if (safeQuestions.length === 0) {
+        return (
+            <div className="p-6 space-y-4 bg-gradient-to-br from-indigo-50 to-purple-50">
+                <div className="text-center py-8">
+                    <p className="text-slate-600">No clarification questions needed for this task.</p>
+                    <Button onClick={() => onSubmit([])} className="mt-4">
+                        Continue
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="p-6 space-y-4 bg-gradient-to-br from-indigo-50 to-purple-50">
             <div className="space-y-4">
-                {questions.map((question: string, index: number) => (
+                {safeQuestions.map((question: string, index: number) => (
                     <div key={index} className="space-y-2">
                         <div className="flex items-start gap-2">
                             <div className="flex-shrink-0 h-6 w-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-medium mt-0.5">
