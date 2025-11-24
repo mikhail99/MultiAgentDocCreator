@@ -1,24 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { Send, FileText, Sparkles, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ChatArea from '../components/document-gen/ChatArea';
-import DocumentViewer from '../components/document-gen/DocumentViewer';
-import TemplateSelector from '../components/document-gen/TemplateSelector';
-import TaskInput from '../components/document-gen/TaskInput';
-import AgentSettings from '../components/document-gen/AgentSettings';
-import { agentWorkflow } from '../components/document-gen/agentWorkflow';
+import ChatArea from '@/components/document-gen/ChatArea';
+import DocumentViewer from '@/components/document-gen/DocumentViewer';
+import TemplateSelector from '@/components/document-gen/TemplateSelector';
+import AgentSettings from '@/components/document-gen/AgentSettings';
+import { agentWorkflow } from '@/components/document-gen/agentWorkflow';
+
+// Type definitions
+interface Message {
+    id: string;
+    type: 'system' | 'user' | 'agent' | 'thinking' | 'tool' | 'document-update';
+    content: string;
+    sources?: any[];
+    questions?: any[];
+    answers?: any;
+    files?: any[];
+    agent?: string;
+    status?: string;
+    toolName?: string;
+    parameters?: any;
+    result?: any;
+}
+
+interface AgentSettings {
+    creativity: number;
+    rigor: number;
+    analysisDepth: number;
+    customInstructions: string;
+    enabledTools: string[];
+    llmModel: string;
+}
+
+interface Template {
+    id: string;
+    name: string;
+    description: string;
+    icon: any;
+    color: string;
+    features: string[];
+}
 
 export default function DocumentGenerator() {
-    const [stage, setStage] = useState('template-selection'); // template-selection, task-input, clarification, processing, complete
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [stage, setStage] = useState<'template-selection' | 'task-input' | 'clarification' | 'processing' | 'complete'>('template-selection');
+    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [task, setTask] = useState('');
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [document, setDocument] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [pendingQuestions, setPendingQuestions] = useState(null);
-    const [sources, setSources] = useState([]);
+    const [pendingQuestions, setPendingQuestions] = useState<any>(null);
+    const [sources, setSources] = useState<any[]>([]);
     const [messageIdCounter, setMessageIdCounter] = useState(0);
-    const [agentSettings, setAgentSettings] = useState({
+    const [agentSettings, setAgentSettings] = useState<AgentSettings>({
         creativity: 50,
         rigor: 70,
         analysisDepth: 60,
@@ -33,21 +66,7 @@ export default function DocumentGenerator() {
         return `msg_${Date.now()}_${newId}`;
     };
 
-    const addMessage = (message) => {
-        const newMessage = { ...message, id: generateMessageId() };
-        setMessages(prev => [...prev, newMessage]);
-
-        // Collect sources from tool messages
-        if (newMessage.sources && newMessage.sources.length > 0) {
-            setSources(prev => {
-                const existingUrls = new Set(prev.map(s => s.url));
-                const newSources = newMessage.sources.filter(s => !existingUrls.has(s.url));
-                return [...prev, ...newSources];
-            });
-        }
-    };
-
-    const handleTemplateSelect = (template) => {
+    const handleTemplateSelect = (template: Template) => {
         setSelectedTemplate(template);
         setStage('task-input');
         setMessages([{
@@ -57,7 +76,7 @@ export default function DocumentGenerator() {
         }]);
     };
 
-    const handleTaskSubmit = async (taskInput, files) => {
+    const handleTaskSubmit = async (taskInput: string, files: { name: string; instructions: string }[]) => {
         // Store the task for later use in document generation
         setTask(taskInput);
 
@@ -99,9 +118,9 @@ export default function DocumentGenerator() {
         })();
     };
 
-    const handleClarificationSubmit = async (answers) => {
+    const handleClarificationSubmit = async (answers: string[]) => {
         // Convert answers array to dictionary format expected by backend
-        const answersDict = {};
+        const answersDict: { [key: string]: string } = {};
         if (Array.isArray(answers)) {
             answers.forEach((answer, index) => {
                 answersDict[`question_${index + 1}`] = answer;
@@ -125,10 +144,10 @@ export default function DocumentGenerator() {
             selectedTemplate,
             task,
             answersDict,
-            (message) => {
+            (message: Message) => {
                 setMessages(prev => [...prev, message]);
             },
-            (doc) => {
+            (doc: string) => {
                 setDocument(doc);
             }
         );
@@ -137,7 +156,7 @@ export default function DocumentGenerator() {
         setStage('complete');
     };
 
-    const handleRefinementRequest = async (request) => {
+    const handleRefinementRequest = async (request: string) => {
         setMessages(prev => [...prev, {
             id: generateMessageId(),
             type: 'user',
@@ -150,10 +169,10 @@ export default function DocumentGenerator() {
         await agentWorkflow.refineDocument(
             document,
             request,
-            (message) => {
+            (message: Message) => {
                 setMessages(prev => [...prev, message]);
             },
-            (doc) => {
+            (doc: string) => {
                 setDocument(doc);
             }
         );

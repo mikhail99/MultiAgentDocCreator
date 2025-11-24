@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronRight, Check, Loader2, Brain, Zap, FileText, Upload } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
 
-export default function MessageBubble({ message }) {
+interface Message {
+    id: string;
+    type: 'system' | 'user' | 'agent' | 'thinking' | 'tool' | 'document-update';
+    content: string;
+    sources?: any[];
+    questions?: any[];
+    answers?: any;
+    files?: any[];
+    agent?: string;
+    status?: string;
+    toolName?: string;
+    parameters?: any;
+    result?: any;
+}
+
+interface MessageBubbleProps {
+    message: Message;
+}
+
+export default function MessageBubble({ message }: MessageBubbleProps) {
     const [expanded, setExpanded] = useState(true);
 
     if (message.type === 'user') {
@@ -14,7 +32,7 @@ export default function MessageBubble({ message }) {
                         <p className="text-sm leading-relaxed">{message.content}</p>
                         {message.files && message.files.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-white/20 space-y-1">
-                                {message.files.map((file, idx) => (
+                                {message.files?.map((file: any, idx: number) => (
                                     <div key={idx} className="flex items-center gap-2 text-xs text-white/90">
                                         <Upload className="h-3 w-3" />
                                         {file.name}
@@ -24,7 +42,7 @@ export default function MessageBubble({ message }) {
                         )}
                         {message.answers && typeof message.answers === 'object' && Object.keys(message.answers).length > 0 && (
                             <div className="mt-3 pt-3 border-t border-white/20 space-y-2">
-                                {Object.entries(message.answers).map(([key, answer], idx) => (
+                                {Object.entries(message.answers).map(([key, answer]) => (
                                     <div key={key} className="text-xs">
                                         <span className="text-white/70">{key}:</span>
                                         <span className="ml-2 text-white/90">{String(answer)}</span>
@@ -59,7 +77,7 @@ export default function MessageBubble({ message }) {
                         <p className="text-sm text-slate-700 leading-relaxed">{message.content}</p>
                         {message.questions && Array.isArray(message.questions) && message.questions.length > 0 && (
                             <div className="mt-4 space-y-2">
-                                {message.questions.map((q, idx) => (
+                                {message.questions?.map((q: any, idx: number) => (
                                     <div key={idx} className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-600">
                                         <span className="font-medium text-indigo-600">Q{idx + 1}:</span> {q}
                                     </div>
@@ -170,7 +188,7 @@ export default function MessageBubble({ message }) {
                                 <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
                                     <p className="text-xs text-slate-500 mb-2">Sources:</p>
                                     <div className="space-y-2">
-                                        {message.sources.map((source, idx) => (
+                                        {message.sources?.map((source: any, idx: number) => (
                                             <a
                                                 key={idx}
                                                 href={source.url}

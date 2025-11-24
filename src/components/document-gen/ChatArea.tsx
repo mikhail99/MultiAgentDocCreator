@@ -6,17 +6,18 @@ import ClarificationQuestions from './ClarificationQuestions';
 import RefinementInput from './RefinementInput';
 
 interface Message {
-    id: string | number;
-    type: string;
-    content?: string;
+    id: string;
+    type: 'system' | 'user' | 'agent' | 'thinking' | 'tool' | 'document-update';
+    content: string;
+    sources?: any[];
+    questions?: any[];
+    answers?: any;
+    files?: any[];
     agent?: string;
     status?: string;
     toolName?: string;
     parameters?: any;
-    result?: string;
-    questions?: string[];
-    answers?: string[];
-    files?: { name: string; instructions?: string }[];
+    result?: any;
 }
 
 interface Template {

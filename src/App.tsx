@@ -1,4 +1,3 @@
-import React from 'react';
 import DocumentGenerator from './Pages/DocumentGenerator';
 
 function App() {

@@ -14,9 +14,24 @@
 // The fallback behavior ensures a smooth development experience while maintaining
 // production reliability.
 
-import { apiClient, Message, ResearchResponse } from '../../lib/api';
+import { apiClient, Message } from '../../lib/api';
 
-const SAMPLE_DOCUMENTS = {
+
+interface QuestionsMap {
+    'academic-review': string[];
+    'business-report': string[];
+    'technical-doc': string[];
+    [key: string]: string[];
+}
+
+interface DocumentsMap {
+    'academic-review': string;
+    'business-report': string;
+    'technical-doc': string;
+    [key: string]: string;
+}
+
+const SAMPLE_DOCUMENTS: DocumentsMap = {
     'academic-review': `# Machine Learning Applications in Sensor Data Analysis: A Comprehensive Review
 
 ## Abstract
@@ -170,8 +185,30 @@ export const agentWorkflow = {
             let allSources: any[] = [];
 
             for await (const event of apiClient.performResearchStream(query, customInstructions)) {
-                if (event.type === 'message') {
-                    const apiMessage = event.data as Message;
+                if ('type' in event && typeof event.type === 'string' && event.type !== 'system' && event.type !== 'user' && event.type !== 'agent' && event.type !== 'thinking' && event.type !== 'tool' && event.type !== 'document-update') {
+                    // This is a control event (complete/error)
+                    if (event.type === 'complete') {
+                        // Send completion message with sources
+                        onMessage({
+                            id: (messageId++).toString(),
+                            type: 'document-update',
+                            content: `✨ Research complete! Found ${allSources.length} sources.`,
+                            sources: allSources
+                        });
+                        break;
+                    } else if (event.type === 'error') {
+                        console.error('Streaming error:', (event as any).data);
+                        onMessage({
+                            id: (messageId++).toString(),
+                            type: 'agent',
+                            content: `Research failed: ${(event as any).data}`,
+                            status: 'complete'
+                        });
+                        break;
+                    }
+                } else {
+                    // This is a direct Message object
+                    const apiMessage = event as Message;
                     const frontendMessage: Message = {
                         ...apiMessage,
                         id: (messageId++).toString(),
@@ -184,48 +221,29 @@ export const agentWorkflow = {
                     }
 
                     onMessage(frontendMessage);
-                } else if (event.type === 'complete') {
-                    // Send completion message with sources
-                    onMessage({
-                        id: (messageId++).toString(),
-                        type: 'document-update',
-                        content: `✨ Research complete! Found ${allSources.length} sources.`,
-                        sources: allSources
-                    });
-                    break;
-                } else if (event.type === 'error') {
-                    console.error('Streaming error:', event.data);
-                    onMessage({
-                        id: (messageId++).toString(),
-                        type: 'thinking',
-                        agent: 'Research Agent',
-                        content: `Research failed: ${event.data.error}`,
-                        status: 'complete'
-                    });
-                    break;
                 }
             }
 
         } catch (error) {
             console.error('Research failed:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             onMessage({
                 id: Date.now().toString(),
-                type: 'thinking',
-                agent: 'Research Agent',
-                content: `Research failed: ${error.message}`,
+                type: 'agent',
+                content: `Research failed: ${errorMessage}`,
                 status: 'complete'
             });
         }
     },
 
-    generateClarificationQuestions: async (template, task) => {
+    generateClarificationQuestions: async (template: any, task: string) => {
         try {
             const response = await apiClient.getClarificationQuestions(template.id, task);
             return response.questions;
         } catch (error) {
             console.error('Failed to get clarification questions:', error);
             // Fallback to default questions
-            const questions = {
+            const questions: QuestionsMap = {
                 'academic-review': [
                     'What specific time period should the literature review cover? (e.g., last 5 years, 2020-2024)',
                     'Are there particular research databases or sources you want prioritized? (e.g., IEEE, PubMed, arXiv)',
@@ -251,7 +269,7 @@ export const agentWorkflow = {
         }
     },
 
-    generateDocument: async (template, task, answers, onMessage, onDocumentUpdate) => {
+    generateDocument: async (template: any, task: string, answers: any, onMessage: (message: Message) => void, onDocumentUpdate: (doc: string) => void) => {
         try {
             // Send initial processing message
             onMessage({
@@ -279,8 +297,29 @@ export const agentWorkflow = {
             let finalDocument = null;
 
             for await (const event of apiClient.performResearchStream(researchQuery)) {
-                if (event.type === 'message') {
-                    const apiMessage = event.data as Message;
+                if ('type' in event && typeof event.type === 'string' && event.type !== 'system' && event.type !== 'user' && event.type !== 'agent' && event.type !== 'thinking' && event.type !== 'tool' && event.type !== 'document-update') {
+                    // This is a control event (complete/error)
+                    if (event.type === 'complete') {
+                        // Send completion message
+                        onMessage({
+                            id: (messageId++).toString(),
+                            type: 'document-update',
+                            content: '✨ Document generation complete! The research-backed document is ready for your review.'
+                        });
+
+                        // Update document
+                        if (finalDocument) {
+                            onDocumentUpdate(finalDocument);
+                        } else {
+                            // Fallback to sample document
+                            const doc = SAMPLE_DOCUMENTS[template.id] || SAMPLE_DOCUMENTS['academic-review'];
+                            onDocumentUpdate(doc);
+                        }
+                        break;
+                    }
+                } else {
+                    // This is a direct Message object
+                    const apiMessage = event as Message;
                     const frontendMessage: Message = {
                         ...apiMessage,
                         id: (messageId++).toString(),
@@ -293,49 +332,18 @@ export const agentWorkflow = {
                     }
 
                     onMessage(frontendMessage);
-                } else if (event.type === 'complete') {
-                    // Send completion message
-                    onMessage({
-                        id: (messageId++).toString(),
-                        type: 'document-update',
-                        content: '✨ Document generation complete! The research-backed document is ready for your review.'
-                    });
-
-                    // Update document
-                    if (finalDocument) {
-                        onDocumentUpdate(finalDocument);
-                    } else {
-                        // Fallback to sample document
-                        const doc = SAMPLE_DOCUMENTS[template.id] || SAMPLE_DOCUMENTS['academic-review'];
-                        onDocumentUpdate(doc);
-                    }
-                    break;
-                } else if (event.type === 'error') {
-                    console.error('Streaming error:', event.data);
-                    onMessage({
-                        id: (messageId++).toString(),
-                        type: 'thinking',
-                        agent: 'System',
-                        content: `Document generation failed: ${event.data.error}`,
-                        status: 'complete'
-                    });
-
-                    // Fallback to sample document
-                    const doc = SAMPLE_DOCUMENTS[template.id] || SAMPLE_DOCUMENTS['academic-review'];
-                    onDocumentUpdate(doc);
-                    break;
                 }
             }
 
         } catch (error) {
             console.error('Document generation failed:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
             // Send error message
             onMessage({
                 id: Date.now().toString(),
-                type: 'thinking',
-                agent: 'System',
-                content: `Document generation failed: ${error.message}`,
+                type: 'agent',
+                content: `Document generation failed: ${errorMessage}`,
                 status: 'complete'
             });
 
@@ -349,11 +357,11 @@ export const agentWorkflow = {
     // properly formatted Message objects that match frontend interface.
     // Agent names and message types are now handled by the backend.
 
-    refineDocument: async (currentDoc, request, onMessage, onDocumentUpdate) => {
+    refineDocument: async (currentDoc: string, request: string, onMessage: (message: Message) => void, onDocumentUpdate: (doc: string) => void) => {
         try {
             // Send initial processing message
             onMessage({
-                id: Date.now(),
+                id: Date.now().toString(),
                 type: 'thinking',
                 agent: 'Writing Agent',
                 content: `Processing refinement request: "${request}". Analyzing current document and applying requested changes.`,
@@ -373,8 +381,24 @@ Apply the requested changes while maintaining document quality and coherence.`;
             let sources: any[] = [];
 
             for await (const event of apiClient.performResearchStream(refinementQuery)) {
-                if (event.type === 'message') {
-                    const apiMessage = event.data as Message;
+                if ('type' in event && typeof event.type === 'string' && event.type !== 'system' && event.type !== 'user' && event.type !== 'agent' && event.type !== 'thinking' && event.type !== 'tool' && event.type !== 'document-update') {
+                    // This is a control event (complete/error)
+                    if (event.type === 'complete') {
+                        // Send completion message
+                        onMessage({
+                            id: (messageId++).toString(),
+                            type: 'document-update',
+                            content: '✨ Document refined based on your feedback!'
+                        });
+
+                        // Update document with refined content (for now, just append a note)
+                        const updatedDoc = currentDoc + '\n\n## Update Note\n\nDocument has been refined based on your feedback.';
+                        onDocumentUpdate(updatedDoc);
+                        break;
+                    }
+                } else {
+                    // This is a direct Message object
+                    const apiMessage = event as Message;
                     const frontendMessage: Message = {
                         ...apiMessage,
                         id: (messageId++).toString(),
@@ -388,48 +412,18 @@ Apply the requested changes while maintaining document quality and coherence.`;
                     }
 
                     onMessage(frontendMessage);
-                } else if (event.type === 'complete') {
-                    // Store sources for later use
-                    console.log('Refinement complete with sources:', sources);
-                    break;
-                } else if (event.type === 'error') {
-                    console.error('Streaming error:', event.data);
-                    onMessage({
-                        id: (messageId++).toString(),
-                        type: 'thinking',
-                        agent: 'Writing Agent',
-                        content: `Error during refinement: ${event.data.error}`,
-                        status: 'complete'
-                    });
-                    break;
                 }
-            }
-
-            // Send completion message
-            onMessage({
-                id: (messageId++).toString(),
-                type: 'document-update',
-                content: '✨ Document refined based on your feedback!'
-            });
-
-            // Update document with refined content
-            if (response.final_answer) {
-                onDocumentUpdate(response.final_answer);
-            } else {
-                // Fallback: append refinement note
-                const updatedDoc = currentDoc + '\n\n## Update Note\n\nDocument has been refined based on your feedback.';
-                onDocumentUpdate(updatedDoc);
             }
 
         } catch (error) {
             console.error('Document refinement failed:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
             // Send error message
             onMessage({
                 id: Date.now().toString(),
-                type: 'thinking',
-                agent: 'System',
-                content: `Document refinement failed: ${error.message}`,
+                type: 'agent',
+                content: `Document refinement failed: ${errorMessage}`,
                 status: 'complete'
             });
 

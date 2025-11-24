@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Send } from 'lucide-react';
 
 interface RefinementInputProps {

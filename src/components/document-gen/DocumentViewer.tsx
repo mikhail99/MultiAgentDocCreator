@@ -1,11 +1,27 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { FileText, Download, Copy, Loader2 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
+import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-export default function DocumentViewer({ document, selectedTemplate, isGenerating, sources = [] }) {
+type CodeProps = React.ComponentProps<'code'> & {
+    inline?: boolean;
+};
+
+interface DocumentViewerProps {
+    document: string;
+    selectedTemplate: any;
+    isGenerating: boolean;
+    sources?: any[];
+}
+
+interface Source {
+    url: string;
+    title: string;
+}
+
+export default function DocumentViewer({ document, selectedTemplate, isGenerating, sources = [] }: DocumentViewerProps) {
     const handleCopy = () => {
         navigator.clipboard.writeText(document);
         toast.success('Document copied to clipboard');
@@ -140,19 +156,12 @@ export default function DocumentViewer({ document, selectedTemplate, isGeneratin
                                         {children}
                                     </blockquote>
                                 ),
-                                code: ({ inline, children }) => {
+                                code: (props: CodeProps) => {
+                                    const { inline, children, ...rest } = props;
                                     if (inline) {
-                                        return (
-                                            <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm font-mono text-slate-800">
-                                                {children}
-                                            </code>
-                                        );
+                                        return <code {...rest} className="bg-slate-100 px-1.5 py-0.5 rounded text-sm font-mono text-slate-800">{children}</code>;
                                     }
-                                    return (
-                                        <code className="block bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-sm font-mono">
-                                            {children}
-                                        </code>
-                                    );
+                                    return <code {...rest} className="block bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto text-sm font-mono">{children}</code>;
                                 }
                             }}
                         >
@@ -163,7 +172,7 @@ export default function DocumentViewer({ document, selectedTemplate, isGeneratin
                             <div className="mt-8 pt-6 border-t border-slate-200">
                                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Sources</h3>
                                 <div className="grid gap-3 md:grid-cols-2">
-                                    {sources.map((source, idx) => (
+                                    {sources.map((source: Source, idx: number) => (
                                         <a
                                             key={idx}
                                             href={source.url}

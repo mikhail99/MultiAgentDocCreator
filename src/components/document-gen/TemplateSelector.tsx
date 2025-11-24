@@ -1,5 +1,4 @@
-import React from 'react';
-import { Card } from '../ui/card';
+import { Card } from '@/components/ui/card';
 import { FileText, GraduationCap, Briefcase, Code, BookOpen, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 

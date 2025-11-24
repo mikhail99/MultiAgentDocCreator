@@ -14,9 +14,24 @@
 // The fallback behavior ensures a smooth development experience while maintaining
 // production reliability.
 
-import { apiClient, Message, ResearchResponse } from '../../lib/api';
+import { apiClient, Message } from '../../lib/api';
 
-const SAMPLE_DOCUMENTS = {
+
+interface QuestionsMap {
+    'academic-review': string[];
+    'business-report': string[];
+    'technical-doc': string[];
+    [key: string]: string[];
+}
+
+interface DocumentsMap {
+    'academic-review': string;
+    'business-report': string;
+    'technical-doc': string;
+    [key: string]: string;
+}
+
+const SAMPLE_DOCUMENTS: DocumentsMap = {
     'academic-review': `# Machine Learning Applications in Sensor Data Analysis: A Comprehensive Review
 
 ## Abstract
@@ -154,14 +169,14 @@ All API requests require authentication using Bearer tokens...
 };
 
 export const agentWorkflow = {
-    generateClarificationQuestions: async (template, task) => {
+    generateClarificationQuestions: async (template: any, task: string) => {
         try {
             const response = await apiClient.getClarificationQuestions(template.id, task);
             return response.questions;
         } catch (error) {
             console.error('Failed to get clarification questions:', error);
             // Fallback to default questions
-            const questions = {
+            const questions: QuestionsMap = {
                 'academic-review': [
                     'What specific time period should the literature review cover? (e.g., last 5 years, 2020-2024)',
                     'Are there particular research databases or sources you want prioritized? (e.g., IEEE, PubMed, arXiv)',
@@ -187,12 +202,12 @@ export const agentWorkflow = {
         }
     },
 
-    generateDocument: async (template, task, answers, onMessage, onDocumentUpdate) => {
+    generateDocument: async (template: any, task: string, answers: any, onMessage: (message: Message) => void, onDocumentUpdate: (doc: string) => void) => {
         try {
             let messageId = Date.now() + 1;
             // Send initial processing message
             onMessage({
-                id: Date.now(),
+                id: Date.now().toString(),
                 type: 'thinking',
                 agent: 'Research Agent',
                 content: 'Starting deep research and document generation process...',
@@ -248,7 +263,7 @@ export const agentWorkflow = {
                 id: Date.now().toString(),
                 type: 'thinking',
                 agent: 'System',
-                content: `Document generation failed: ${error.message}`,
+                content: `Document generation failed: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
                 status: 'complete'
             });
 
@@ -262,11 +277,11 @@ export const agentWorkflow = {
     // properly formatted Message objects that match frontend interface.
     // Agent names and message types are now handled by the backend.
 
-    refineDocument: async (currentDoc, request, onMessage, onDocumentUpdate) => {
+    refineDocument: async (currentDoc: string, request: string, onMessage: (message: Message) => void, onDocumentUpdate: (doc: string) => void) => {
         try {
             // Send initial processing message
             onMessage({
-                id: Date.now(),
+                id: Date.now().toString(),
                 type: 'thinking',
                 agent: 'Writing Agent',
                 content: `Processing refinement request: "${request}". Analyzing current document and applying requested changes.`,
@@ -321,7 +336,7 @@ Apply the requested changes while maintaining document quality and coherence.`;
                 id: Date.now().toString(),
                 type: 'thinking',
                 agent: 'System',
-                content: `Document refinement failed: ${error.message}`,
+                content: `Document refinement failed: ${error instanceof Error ? error.message : 'Unknown error occurred'}`,
                 status: 'complete'
             });
 

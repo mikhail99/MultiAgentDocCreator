@@ -1,25 +1,37 @@
 import React, { useState } from 'react';
-import { Button } from '../../components/ui/button';
-import { Textarea } from '../../components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Upload, X, Send } from 'lucide-react';
 
-export default function TaskInput({ onSubmit, isProcessing }) {
-    const [task, setTask] = useState('');
-    const [files, setFiles] = useState([]);
+interface FileWithInstructions {
+    file: File;
+    instructions: string;
+}
 
-    const handleFileChange = (e) => {
-        const newFiles = Array.from(e.target.files).map(file => ({
-            file,
-            instructions: ''
-        }));
-        setFiles(prev => [...prev, ...newFiles]);
+interface TaskInputProps {
+    onSubmit: (task: string, files: { name: string; instructions: string }[]) => void;
+    isProcessing: boolean;
+}
+
+export default function TaskInput({ onSubmit, isProcessing }: TaskInputProps) {
+    const [task, setTask] = useState('');
+    const [files, setFiles] = useState<FileWithInstructions[]>([]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files).map((file: File) => ({
+                file,
+                instructions: ''
+            }));
+            setFiles(prev => [...prev, ...newFiles]);
+        }
     };
 
-    const removeFile = (index) => {
+    const removeFile = (index: number) => {
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const updateFileInstructions = (index, instructions) => {
+    const updateFileInstructions = (index: number, instructions: string) => {
         setFiles(prev => prev.map((f, i) => i === index ? { ...f, instructions } : f));
     };
 

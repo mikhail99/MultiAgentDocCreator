@@ -5,7 +5,9 @@
 // Backend Message model supports: system, user, agent, thinking, tool, document-update
 // See backend/api/models.py for the complete schema definition.
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+/// <reference types="vite/client" />
+
+const API_BASE_URL = (import.meta.env as any).VITE_API_URL || 'http://localhost:8000';
 
 export interface Message {
   // Core message properties
